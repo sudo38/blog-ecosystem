@@ -1,0 +1,131 @@
+<?php
+
+// symlink(base_path('storage/uploads'), public_path('storage'));
+
+define('INFO', "\033[1;97;44m");
+define('ERROR', "\033[1;97;41m");
+define('RESET', "\033[0m");
+
+if (!function_exists('base_path')){
+   function base_path(string $path){
+      return getcwd()."/$path";
+   }
+}
+
+if (!function_exists('public_path')){
+   function public_path(string $path){
+      return getcwd()."/public/$path";
+   }
+}
+
+function say_hello($options){
+   // var_dump($options);
+   $name = $options[1] ?? 'World';
+   $shout = isset($options['shout']) ? strtoupper($name) : $name;
+   echo "Hello, $shout!\n";
+}
+
+function list_of_commends($options){
+   echo "Available commands:\n";
+   echo "  hello [name]  - Greet someone\n";
+   echo "  list          - List available commands\n";
+}
+
+function clear_views($options){
+   $path = 'storage/views';
+   $files = glob($path.'/*');
+   
+   foreach($files as $file){
+      if(file_exists($file)){
+         unlink($file);
+      }
+   }
+
+   echo 'Compiled views cleared successfully.';
+}
+
+function help_usage($options){
+   global $commands;
+
+   if (count($options) < 2) {
+      echo "Usage: php cli from help <command> [options]\n";
+      echo "Available commands:\n";
+      foreach (array_keys($commands) as $name) {
+         echo "  $name\n";
+      }
+   } else {
+      $command = $options[1];
+      if (isset($commands[$command])) {
+         echo "Usage for '$command':\n";
+         switch ($command) {
+               case 'hello':
+                  echo "  hello [name] --shout  - Greet someone, optionally shouting\n";
+                  break;
+               case 'list':
+                  echo "  list                 - List available commands\n";
+                  break;
+               default:
+                  echo "No detailed help available.\n";
+         }
+      } else {
+         echo "Command '$command' not found.\n";
+      }
+   }
+}
+
+function parse_options($args){
+   $options = [];
+   unset($args[0]);
+   foreach ($args as $arg) {
+      if (strpos($arg, '--') === 0) {
+         $option = explode('=', substr($arg, 2), 2);
+         $options[$option[0]] = $option[1] ?? true;
+      } else {
+         $options[] = $arg;
+      }
+   }
+
+   return $options;
+}
+
+
+function handle($args, $commands){
+   if(count($args) < 2){
+      return;
+   }
+   $command_name = $args[1];
+
+   if (!$command_name || !isset($commands[$command_name])) {
+      echo "Usage: php cli from handle <command> [options]\n";
+      echo "Available commands:\n";
+      foreach ($commands as $command_name => $command_func) {
+         echo "  $command_name\n";
+      }
+      return;
+   }
+
+   $options = parse_options($args);
+   $command_func = $commands[$command_name];
+   $command_func($options);
+}
+function symbolic($options){
+   // php cli storage:link storage to storage/uploads
+   if(!file_exists(public_path($options[1]))){
+      symlink(base_path($options[3]), public_path($options[1]));
+      echo " ".INFO."INFO".RESET." "."the [".public_path($options[1])."] link has been connected to [".base_path($options[3])."].";
+   }else {
+      echo " ".ERROR."ERROR".RESET." "."File already exists";
+   }
+}
+
+$commands = [
+   'hello' => 'say_hello',
+   'list' => 'list_of_commends',
+   'help' => 'help_usage',
+   'view:clear' => 'clear_views',
+   'storage:link' => 'symbolic'
+];
+
+
+
+handle($argv, $commands);
